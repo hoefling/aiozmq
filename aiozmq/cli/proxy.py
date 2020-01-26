@@ -1,13 +1,18 @@
-import zmq
-import sys
 import argparse
+import sys
 from datetime import datetime
+from typing import TYPE_CHECKING, Optional, Sequence
+
+import zmq
+
+if TYPE_CHECKING:
+    from socket import socket
 
 
-def get_arguments():
+def get_arguments() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description="ZMQ Proxy tool")
 
-    def common_arguments(ap):
+    def common_arguments(ap: argparse.ArgumentParser) -> None:
         ap.add_argument('--front-bind', metavar="ADDR", action='append',
                         help="Binds frontend socket to specified address")
         ap.add_argument('--front-connect', metavar="ADDR", action='append',
@@ -61,13 +66,13 @@ def get_arguments():
     return ap
 
 
-def main():
+def main() -> None:
     ap = get_arguments()
     options = ap.parse_args()
     options.action(options)
 
 
-def serve_proxy(options):
+def serve_proxy(options: argparse.Namespace) -> None:
     if not (options.front_connect or options.front_bind):
         print("No frontend socket address specified!", file=sys.stderr)
         sys.exit(1)
@@ -102,7 +107,9 @@ def serve_proxy(options):
         back.close()
 
 
-def bind_connect(sock, bind=None, connect=None):
+def bind_connect(sock: 'socket',
+                 bind: Optional[Sequence[str]] = None,
+                 connect: Optional[Sequence[str]] = None) -> None:
     if bind:
         for address in bind:
             sock.bind(address)
@@ -111,7 +118,7 @@ def bind_connect(sock, bind=None, connect=None):
             sock.connect(address)
 
 
-def monitor(options):
+def monitor(options: argparse.Namespace) -> None:
     ctx = zmq.Context.instance()
     sock = ctx.socket(zmq.SUB)
 
