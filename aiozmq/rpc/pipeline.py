@@ -100,9 +100,6 @@ class _ClientProtocol(_BaseProtocol):
 
 class PipelineClient(Service):
 
-    def __init__(self, loop, proto):
-        super().__init__(loop, proto)
-
     @property
     def notify(self):
         """Return object for dynamic Pipeline calls.
