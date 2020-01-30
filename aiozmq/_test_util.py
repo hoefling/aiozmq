@@ -8,6 +8,11 @@ import socket
 import sys
 import time
 import unittest
+from queue import Queue
+from typing import Any, Callable, Iterator, Tuple, TypeVar
+
+_AddressFamily = int
+_SocketKind = int
 
 
 class Error(Exception):
@@ -18,16 +23,20 @@ class TestFailed(Error):
     """Test failed."""
 
 
-def _requires_unix_version(sysname, min_version):  # pragma: no cover
+_T = TypeVar('_T')
+_F = Callable[..., _T]
+
+
+def _requires_unix_version(sysname: str, min_version: Tuple[int, ...]) -> Callable[[_F[_T]], _F[_T]]:  # pragma: no cover
     """Decorator raising SkipTest if the OS is `sysname` and the
     version is less than `min_version`.
 
     For example, @_requires_unix_version('FreeBSD', (7, 2)) raises SkipTest if
     the FreeBSD version is less than 7.2.
     """
-    def decorator(func):
+    def decorator(func: _F[_T]) -> _F[_T]:
         @functools.wraps(func)
-        def wrapper(*args, **kw):
+        def wrapper(*args: Any, **kw: Any) -> _T:
             if platform.system() == sysname:
                 version_txt = platform.release().split('-', 1)[0]
                 try:
@@ -41,12 +50,12 @@ def _requires_unix_version(sysname, min_version):  # pragma: no cover
                             "%s version %s or higher required, not %s"
                             % (sysname, min_version_txt, version_txt))
             return func(*args, **kw)
-        wrapper.min_version = min_version
+        wrapper.min_version = min_version  # type: ignore
         return wrapper
     return decorator
 
 
-def requires_freebsd_version(*min_version):  # pragma: no cover
+def requires_freebsd_version(*min_version: int) -> Callable[[_F[_T]], _F[_T]]:  # pragma: no cover
     """Decorator raising SkipTest if the OS is FreeBSD and the FreeBSD
     version is less than `min_version`.
 
@@ -56,7 +65,7 @@ def requires_freebsd_version(*min_version):  # pragma: no cover
     return _requires_unix_version('FreeBSD', min_version)
 
 
-def requires_linux_version(*min_version):  # pragma: no cover
+def requires_linux_version(*min_version: int) -> Callable[[_F[_T]], _F[_T]]:  # pragma: no cover
     """Decorator raising SkipTest if the OS is Linux and the Linux version is
     less than `min_version`.
 
@@ -66,16 +75,16 @@ def requires_linux_version(*min_version):  # pragma: no cover
     return _requires_unix_version('Linux', min_version)
 
 
-def requires_mac_ver(*min_version):  # pragma: no cover
+def requires_mac_ver(*min_version: int) -> Callable[[_F[_T]], _F[_T]]:  # pragma: no cover
     """Decorator raising SkipTest if the OS is Mac OS X and the OS X
     version if less than min_version.
 
     For example, @requires_mac_ver(10, 5) raises SkipTest if the OS X version
     is lesser than 10.5.
     """
-    def decorator(func):
+    def decorator(func: _F[_T]) -> _F[_T]:
         @functools.wraps(func)
-        def wrapper(*args, **kw):
+        def wrapper(*args: Any, **kw: Any) -> _T:
             if sys.platform == 'darwin':
                 version_txt = platform.mac_ver()[0]
                 try:
@@ -89,7 +98,7 @@ def requires_mac_ver(*min_version):  # pragma: no cover
                             "Mac OS X %s or higher required, not %s"
                             % (min_version_txt, version_txt))
             return func(*args, **kw)
-        wrapper.min_version = min_version
+        wrapper.min_version = min_version  # type: ignore
         return wrapper
     return decorator
 
@@ -100,7 +109,7 @@ HOST = "127.0.0.1"
 HOSTv6 = "::1"
 
 
-def _is_ipv6_enabled():  # pragma: no cover
+def _is_ipv6_enabled() -> bool:  # pragma: no cover
     """Check whether IPv6 is enabled on this host."""
     if socket.has_ipv6:
         sock = None
@@ -119,8 +128,8 @@ def _is_ipv6_enabled():  # pragma: no cover
 IPV6_ENABLED = _is_ipv6_enabled()
 
 
-def find_unused_port(family=socket.AF_INET,
-                     socktype=socket.SOCK_STREAM):  # pragma: no cover
+def find_unused_port(family: _AddressFamily = socket.AF_INET,
+                     socktype: _SocketKind = socket.SOCK_STREAM) -> int:  # pragma: no cover
     """Returns an unused port that should be suitable for binding.  This is
     achieved by creating a temporary socket with the same family and type as
     the 'sock' parameter (default is AF_INET, SOCK_STREAM), and binding it to
@@ -183,7 +192,7 @@ def find_unused_port(family=socket.AF_INET,
     return port
 
 
-def bind_port(sock, host=HOST):  # pragma: no cover
+def bind_port(sock: socket.socket, host: str = HOST) -> int:  # pragma: no cover
     """Bind the socket to a free port and return the port number.  Relies on
     ephemeral ports in order to ensure we are using an unbound port.  This is
     important as many tests may be running simultaneously, especially in a
@@ -218,28 +227,28 @@ def bind_port(sock, host=HOST):  # pragma: no cover
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
 
     sock.bind((host, 0))
-    port = sock.getsockname()[1]
+    port = sock.getsockname()[1]  # type: int
     return port
 
 
-def check_errno(errno, exc):
+def check_errno(errno: int, exc: OSError) -> None:
     assert isinstance(exc, OSError), exc
     assert exc.errno == errno, (exc, errno)
 
 
 class TestHandler(logging.Handler):
 
-    def __init__(self, queue):
+    def __init__(self, queue: 'Queue[logging.LogRecord]') -> None:
         super().__init__()
         self.queue = queue
 
-    def emit(self, record):
+    def emit(self, record: logging.LogRecord) -> None:
         time.sleep(0)
         self.queue.put_nowait(record)
 
 
 @contextlib.contextmanager
-def log_hook(logname, queue):
+def log_hook(logname: str, queue: 'Queue[logging.LogRecord]') -> Iterator[None]:
     logger = logging.getLogger(logname)
     handler = TestHandler(queue)
     logger.addHandler(handler)
@@ -254,7 +263,7 @@ def log_hook(logname, queue):
 
 class RpcMixin:
 
-    def close_service(self, service):
+    def close_service(self, service: Any) -> None:
         if service is None:
             return
         loop = service._loop
