@@ -5,11 +5,14 @@ from collections import namedtuple
 import zmq
 
 from .core import ZmqEventLoop, ZmqEventLoopPolicy, create_zmq_connection
-from .interface import ZmqTransport, ZmqProtocol
+from .interface import ZmqProtocol, ZmqTransport
 from .selector import ZmqSelector
-from .stream import (ZmqStream, ZmqStreamProtocol, ZmqStreamClosed,
-                     create_zmq_stream)
-
+from .stream import (
+    ZmqStream,
+    ZmqStreamClosed,
+    ZmqStreamProtocol,
+    create_zmq_stream,
+)
 
 __all__ = ('ZmqSelector', 'ZmqEventLoop', 'ZmqEventLoopPolicy',
            'ZmqTransport', 'ZmqProtocol',
@@ -27,7 +30,7 @@ VersionInfo = namedtuple('VersionInfo',
                          'major minor micro releaselevel serial')
 
 
-def _parse_version(ver):
+def _parse_version(ver: str) -> VersionInfo:
     RE = (r'^(?P<major>\d+)\.(?P<minor>\d+)\.'
           r'(?P<micro>\d+)((?P<releaselevel>[a-z]+)(?P<serial>\d+)?)?$')
     match = re.match(RE, ver)
