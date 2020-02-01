@@ -231,7 +231,7 @@ class BaseZmqEventLoopTestsMixin:
             self.assertEqual({addr1, addr3}, tr.bindings())
             self.assertIn(addr1, tr.bindings())
             self.assertRegex(repr(tr.bindings()),
-                             r'{tcp://127.0.0.1:.\d+, tcp://127.0.0.1:\d+}')
+                             r"{'tcp://127.0.0.1:.\d+', 'tcp://127.0.0.1:\d+'}")
             tr.close()
 
         self.loop.run_until_complete(connect())
