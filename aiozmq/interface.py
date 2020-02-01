@@ -1,15 +1,31 @@
-
 import asyncio
 from asyncio import BaseProtocol, BaseTransport
-
+from typing import (
+    Any,
+    FrozenSet,
+    Generator,
+    Iterable,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 __all__ = ['ZmqTransport', 'ZmqProtocol']
+
+
+_EventMask = int
+_ZmqOption = int
+_Endpoint = Union[str, Iterable[str]]
+
+SocketEvent = NamedTuple('SocketEvent', [('event', _EventMask), ('value', Any), ('endpoint', _Endpoint)])
 
 
 class ZmqTransport(BaseTransport):
     """Interface for ZeroMQ transport."""
 
-    def write(self, data):
+    def write(self, data: Iterable[bytes]) -> None:
         """Write message to the transport.
 
         data is iterable to send as multipart message.
@@ -19,7 +35,7 @@ class ZmqTransport(BaseTransport):
         """
         raise NotImplementedError
 
-    def abort(self):
+    def abort(self) -> None:
         """Close the transport immediately.
 
         Buffered data will be lost.  No more data will be received.
@@ -28,7 +44,7 @@ class ZmqTransport(BaseTransport):
         """
         raise NotImplementedError
 
-    def getsockopt(self, option):
+    def getsockopt(self, option: _ZmqOption) -> Any:
         """Get ZeroMQ socket option.
 
         option is a constant like zmq.SUBSCRIBE, zmq.UNSUBSCRIBE, zmq.TYPE etc.
@@ -38,7 +54,7 @@ class ZmqTransport(BaseTransport):
         """
         raise NotImplementedError
 
-    def setsockopt(self, option, value):
+    def setsockopt(self, option: _ZmqOption, value: Any) -> None:
         """Set ZeroMQ socket option.
 
         option is a constant like zmq.SUBSCRIBE, zmq.UNSUBSCRIBE, zmq.TYPE etc.
@@ -49,7 +65,7 @@ class ZmqTransport(BaseTransport):
         """
         raise NotImplementedError
 
-    def set_write_buffer_limits(self, high=None, low=None):
+    def set_write_buffer_limits(self, high: Optional[int] = None, low: Optional[int] = None) -> None:
         """Set the high- and low-water limits for write flow control.
 
         These two values control when to call the protocol's
@@ -70,14 +86,14 @@ class ZmqTransport(BaseTransport):
         """
         raise NotImplementedError
 
-    def get_write_buffer_limits(self):
+    def get_write_buffer_limits(self) -> Tuple[int, int]:
         raise NotImplementedError
 
-    def get_write_buffer_size(self):
+    def get_write_buffer_size(self) -> int:
         """Return the current size of the write buffer."""
         raise NotImplementedError
 
-    def pause_reading(self):
+    def pause_reading(self) -> None:
         """Pause the receiving end.
 
         No data will be passed to the protocol's msg_received()
@@ -85,7 +101,7 @@ class ZmqTransport(BaseTransport):
         """
         raise NotImplementedError
 
-    def resume_reading(self):
+    def resume_reading(self) -> None:
         """Resume the receiving end.
 
         Data received will once again be passed to the protocol's
@@ -93,7 +109,7 @@ class ZmqTransport(BaseTransport):
         """
         raise NotImplementedError
 
-    def bind(self, endpoint):
+    def bind(self, endpoint: str) -> 'asyncio.Future[str]':
         """Bind transpot to endpoint.
 
         endpoint is a string in format transport://address as ZeroMQ requires.
@@ -102,12 +118,12 @@ class ZmqTransport(BaseTransport):
         """
         raise NotImplementedError
 
-    def unbind(self, endpoint):
+    def unbind(self, endpoint: str) -> 'asyncio.Future[Optional[str]]':
         """Unbind transpot from endpoint.
         """
         raise NotImplementedError
 
-    def bindings(self):
+    def bindings(self) -> FrozenSet[str]:
         """Return immutable set of endpoints bound to transport.
 
         N.B. returned endpoints includes only ones that has been bound
@@ -117,7 +133,7 @@ class ZmqTransport(BaseTransport):
         """
         raise NotImplementedError
 
-    def connect(self, endpoint):
+    def connect(self, endpoint: str) -> 'asyncio.Future[str]':
         """Connect transpot to endpoint.
 
         endpoint is a string in format transport://address as ZeroMQ requires.
@@ -132,12 +148,12 @@ class ZmqTransport(BaseTransport):
         """
         raise NotImplementedError
 
-    def disconnect(self, endpoint):
+    def disconnect(self, endpoint: str) -> 'asyncio.Future[None]':
         """Disconnect transpot from endpoint.
         """
         raise NotImplementedError
 
-    def connections(self):
+    def connections(self) -> FrozenSet[str]:
         """Return immutable set of endpoints connected to transport.
 
         N.B. returned endpoints includes only ones that has been connected
@@ -147,7 +163,7 @@ class ZmqTransport(BaseTransport):
         """
         raise NotImplementedError
 
-    def subscribe(self, value):
+    def subscribe(self, value: bytes) -> None:
         """Establish a new message filter on SUB transport.
 
         Newly created SUB transports filters out all incoming
@@ -164,7 +180,7 @@ class ZmqTransport(BaseTransport):
         """
         raise NotImplementedError
 
-    def unsubscribe(self, value):
+    def unsubscribe(self, value: bytes) -> None:
         """Remove an existing message filter on a SUB transport.
 
         Value should be bytes.
@@ -177,7 +193,7 @@ class ZmqTransport(BaseTransport):
         """
         raise NotImplementedError
 
-    def subscriptions(self):
+    def subscriptions(self) -> FrozenSet[bytes]:
         """Return immutable set of subscriptions (bytes) subscribed on
         transport.
 
@@ -189,7 +205,7 @@ class ZmqTransport(BaseTransport):
         raise NotImplementedError
 
     @asyncio.coroutine
-    def enable_monitor(self, events=None):
+    def enable_monitor(self, events: Optional[_EventMask] = None) -> Generator[Any, Tuple['ZmqTransport', 'ZmqProtocol'], None]:
         """Enables socket events to be reported for this socket.
         Socket events are passed to the protocol's ZmqProtocol's
         event_received method.
@@ -210,7 +226,8 @@ class ZmqTransport(BaseTransport):
         """
         raise NotImplementedError
 
-    def disable_monitor(self):
+    @asyncio.coroutine
+    def disable_monitor(self) -> Generator[Any, Any, None]:
         """Stop the socket event monitor.
         """
         raise NotImplementedError
@@ -219,13 +236,13 @@ class ZmqTransport(BaseTransport):
 class ZmqProtocol(BaseProtocol):
     """Interface for ZeroMQ protocol."""
 
-    def msg_received(self, data):
+    def msg_received(self, data: Sequence[bytes]) -> None:
         """Called when some ZeroMQ message is received.
 
         data is the multipart tuple of bytes with at least one item.
         """
 
-    def event_received(self, event):
+    def event_received(self, event: SocketEvent) -> None:
         """Called when a ZeroMQ socket event is received.
 
         This method is only called when a socket monitor is enabled.
