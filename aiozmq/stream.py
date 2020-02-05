@@ -1,7 +1,11 @@
-import collections
 import asyncio
+import collections
+from typing import Any, Deque, Generator, Iterable, Optional, Tuple
+
+import zmq
+
 from .core import create_zmq_connection
-from .interface import ZmqProtocol
+from .interface import SocketEvent, ZmqProtocol, ZmqTransport, _Endpoint
 
 
 class ZmqStreamClosed(Exception):
@@ -9,11 +13,15 @@ class ZmqStreamClosed(Exception):
 
 
 @asyncio.coroutine
-def create_zmq_stream(zmq_type, *, bind=None, connect=None,
-                      loop=None, zmq_sock=None,
-                      high_read=None, low_read=None,
-                      high_write=None, low_write=None,
-                      events_backlog=100):
+def create_zmq_stream(zmq_type: int, *, bind: Optional[_Endpoint] = None,
+                      connect: Optional[_Endpoint] = None,
+                      loop: Optional[asyncio.AbstractEventLoop] = None,
+                      zmq_sock: Optional[zmq.Socket] = None,
+                      high_read: Optional[int] = None,
+                      low_read: Optional[int] = None,
+                      high_write: Optional[int] = None,
+                      low_write: Optional[int] = None,
+                      events_backlog: int = 100) -> Generator[Any, Tuple[ZmqTransport, ZmqProtocol], 'ZmqStream']:
     """A wrapper for create_zmq_connection() returning a Stream instance.
 
     The arguments are all the usual arguments to create_zmq_connection()
@@ -52,18 +60,18 @@ class ZmqStreamProtocol(ZmqProtocol):
     ZmqProtocol.
     """
 
-    def __init__(self, stream, loop):
+    def __init__(self, stream: 'ZmqStream', loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
         self._stream = stream
         self._paused = False
         self._drain_waiter = None
         self._connection_lost = False
 
-    def pause_writing(self):
+    def pause_writing(self) -> None:
         assert not self._paused
         self._paused = True
 
-    def resume_writing(self):
+    def resume_writing(self) -> None:
         assert self._paused
         self._paused = False
         waiter = self._drain_waiter
@@ -72,10 +80,11 @@ class ZmqStreamProtocol(ZmqProtocol):
             if not waiter.done():
                 waiter.set_result(None)
 
-    def connection_made(self, transport):
+    def connection_made(self, transport: asyncio.BaseTransport) -> None:
+        assert isinstance(transport, ZmqTransport), 'Only implementations of ZmqTransport are supported'
         self._stream.set_transport(transport)
 
-    def connection_lost(self, exc):
+    def connection_lost(self, exc: Optional[Exception]) -> None:
         self._connection_lost = True
         if exc is None:
             self._stream.feed_closing()
@@ -95,21 +104,21 @@ class ZmqStreamProtocol(ZmqProtocol):
             waiter.set_exception(exc)
 
     @asyncio.coroutine
-    def _drain_helper(self):
+    def _drain_helper(self) -> Generator[None, None, None]:
         if self._connection_lost:
             raise ConnectionResetError('Connection lost')
         if not self._paused:
             return
         waiter = self._drain_waiter
         assert waiter is None or waiter.cancelled()
-        waiter = asyncio.Future(loop=self._loop)
+        waiter = asyncio.Future(loop=self._loop)  # type: asyncio.Future[None]
         self._drain_waiter = waiter
         yield from waiter
 
-    def msg_received(self, msg):
+    def msg_received(self, msg: Iterable[bytes]) -> None:
         self._stream.feed_msg(msg)
 
-    def event_received(self, event):
+    def event_received(self, event: SocketEvent) -> None:
         self._stream.feed_event(event)
 
 
@@ -126,8 +135,15 @@ class ZmqStream:
     ZmqTransport directly.
 
     """
+    _protocol = None  # type: ZmqStreamProtocol
+    _transport = None  # type: Optional[ZmqTransport]
+    _exception = None  # type: Optional[BaseException]
+    _queue = None  # type: Deque[Tuple[int, Iterable[bytes]]]
+    _event_queue = None  # type: Deque[SocketEvent]
+    _waiter = None  # type: Optional[asyncio.Future[None]]
+    _event_waiter = None  # type: Optional[asyncio.Future[None]]
 
-    def __init__(self, loop, *, high=None, low=None, events_backlog=100):
+    def __init__(self, loop: asyncio.AbstractEventLoop, *, high: Optional[int] = None, low: Optional[int] = None, events_backlog: int = 100) -> None:
         self._transport = None
         self._protocol = ZmqStreamProtocol(self, loop=loop)
         self._loop = loop
@@ -142,20 +158,20 @@ class ZmqStream:
         self._queue_len = 0
 
     @property
-    def transport(self):
+    def transport(self) -> Optional[ZmqTransport]:
         return self._transport
 
-    def write(self, msg):
+    def write(self, msg: Iterable[bytes]) -> None:
         self._transport.write(msg)
 
-    def close(self):
-        return self._transport.close()
+    def close(self) -> None:
+        self._transport.close()
 
-    def get_extra_info(self, name, default=None):
+    def get_extra_info(self, name: Any, default: Any = None) -> Any:
         return self._transport.get_extra_info(name, default)
 
     @asyncio.coroutine
-    def drain(self):
+    def drain(self) -> Generator[None, None, None]:
         """Flush the write buffer.
 
         The intended use is to write
@@ -167,10 +183,10 @@ class ZmqStream:
             raise self._exception
         yield from self._protocol._drain_helper()
 
-    def exception(self):
+    def exception(self) -> Optional[BaseException]:
         return self._exception
 
-    def set_exception(self, exc):
+    def set_exception(self, exc: BaseException) -> None:
         """Private"""
         self._exception = exc
 
@@ -186,12 +202,12 @@ class ZmqStream:
             if not waiter.cancelled():
                 waiter.set_exception(exc)
 
-    def set_transport(self, transport):
+    def set_transport(self, transport: ZmqTransport) -> None:
         """Private"""
         assert self._transport is None, 'Transport already set'
         self._transport = transport
 
-    def _set_read_buffer_limits(self, high=None, low=None):
+    def _set_read_buffer_limits(self, high: Optional[int] = None, low: Optional[int] = None) -> None:
         if high is None:
             if low is None:
                 high = 64*1024
@@ -205,16 +221,16 @@ class ZmqStream:
         self._high_water = high
         self._low_water = low
 
-    def set_read_buffer_limits(self, high=None, low=None):
+    def set_read_buffer_limits(self, high: Optional[int] = None, low: Optional[int] = None) -> None:
         self._set_read_buffer_limits(high, low)
         self._maybe_resume_transport()
 
-    def _maybe_resume_transport(self):
+    def _maybe_resume_transport(self) -> None:
         if self._paused and self._queue_len <= self._low_water:
             self._paused = False
             self._transport.resume_reading()
 
-    def feed_closing(self):
+    def feed_closing(self) -> None:
         """Private"""
         self._closing = True
         self._transport = None
@@ -231,11 +247,11 @@ class ZmqStream:
             if not waiter.cancelled():
                 waiter.set_exception(ZmqStreamClosed())
 
-    def at_closing(self):
+    def at_closing(self) -> bool:
         """Return True if the buffer is empty and 'feed_closing' was called."""
         return self._closing and not self._queue
 
-    def feed_msg(self, msg):
+    def feed_msg(self, msg: Iterable[bytes]) -> None:
         """Private"""
         assert not self._closing, 'feed_msg after feed_closing'
 
@@ -254,7 +270,7 @@ class ZmqStream:
             self._transport.pause_reading()
             self._paused = True
 
-    def feed_event(self, event):
+    def feed_event(self, event: SocketEvent) -> None:
         """Private"""
         assert not self._closing, 'feed_event after feed_closing'
 
@@ -267,7 +283,7 @@ class ZmqStream:
                 event_waiter.set_result(None)
 
     @asyncio.coroutine
-    def read(self):
+    def read(self) -> Generator[Any, None, Iterable[bytes]]:
         if self._exception is not None:
             raise self._exception
 
@@ -278,7 +294,7 @@ class ZmqStream:
             if self._waiter is not None:
                 raise RuntimeError('read called while another coroutine is '
                                    'already waiting for incoming data')
-            self._waiter = asyncio.Future(loop=self._loop)
+            self._waiter = asyncio.Future(loop=self._loop)  # type: asyncio.Future[Any]
             try:
                 yield from self._waiter
             finally:
@@ -290,7 +306,7 @@ class ZmqStream:
         return msg
 
     @asyncio.coroutine
-    def read_event(self):
+    def read_event(self) -> Generator[Any, None, SocketEvent]:
         if self._closing:
             raise ZmqStreamClosed()
 
