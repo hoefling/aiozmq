@@ -873,7 +873,7 @@ class ZmqEventLoopPolicy(asyncio.AbstractEventLoopPolicy):
         """
         if (self._local._loop is None and
                 not self._local._set_called and
-                isinstance(threading.current_thread(), threading._MainThread)):
+                threading.current_thread() is threading.main_thread()):
             self.set_event_loop(self.new_event_loop())
         assert self._local._loop is not None, \
             ('There is no current event loop in thread %r.' %
@@ -902,7 +902,7 @@ class ZmqEventLoopPolicy(asyncio.AbstractEventLoopPolicy):
         self._local._loop = loop
 
         if (self._watcher is not None and
-                isinstance(threading.current_thread(), threading._MainThread)):
+                threading.current_thread() is threading.main_thread()):
             self._watcher.attach_loop(loop)
 
     if sys.platform != 'win32':
@@ -910,8 +910,7 @@ class ZmqEventLoopPolicy(asyncio.AbstractEventLoopPolicy):
             with asyncio.events._lock:
                 if self._watcher is None:  # pragma: no branch
                     self._watcher = SafeChildWatcher()
-                    if isinstance(threading.current_thread(),
-                                  threading._MainThread):
+                    if threading.current_thread() is threading.main_thread():
                         self._watcher.attach_loop(self._local._loop)
 
         def get_child_watcher(self) -> asyncio.AbstractChildWatcher:
