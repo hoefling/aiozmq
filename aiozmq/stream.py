@@ -13,15 +13,17 @@ class ZmqStreamClosed(Exception):
 
 
 @asyncio.coroutine
-def create_zmq_stream(zmq_type: int, *, bind: Optional[_Endpoint] = None,
-                      connect: Optional[_Endpoint] = None,
-                      loop: Optional[asyncio.AbstractEventLoop] = None,
-                      zmq_sock: Optional[zmq.Socket] = None,
-                      high_read: Optional[int] = None,
-                      low_read: Optional[int] = None,
-                      high_write: Optional[int] = None,
-                      low_write: Optional[int] = None,
-                      events_backlog: int = 100) -> Generator[Any, Tuple[ZmqTransport, ZmqProtocol], 'ZmqStream']:
+def create_zmq_stream(
+    zmq_type: int, *, bind: Optional[_Endpoint] = None,
+    connect: Optional[_Endpoint] = None,
+    loop: Optional[asyncio.AbstractEventLoop] = None,
+    zmq_sock: Optional[zmq.Socket] = None,
+    high_read: Optional[int] = None,
+    low_read: Optional[int] = None,
+    high_write: Optional[int] = None,
+    low_write: Optional[int] = None,
+    events_backlog: int = 100
+) -> Generator[Any, Tuple[ZmqTransport, ZmqProtocol], 'ZmqStream']:
     """A wrapper for create_zmq_connection() returning a Stream instance.
 
     The arguments are all the usual arguments to create_zmq_connection()
@@ -60,7 +62,8 @@ class ZmqStreamProtocol(ZmqProtocol):
     ZmqProtocol.
     """
 
-    def __init__(self, stream: 'ZmqStream', loop: asyncio.AbstractEventLoop) -> None:
+    def __init__(self, stream: 'ZmqStream',
+                 loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
         self._stream = stream
         self._paused = False
@@ -81,7 +84,9 @@ class ZmqStreamProtocol(ZmqProtocol):
                 waiter.set_result(None)
 
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
-        assert isinstance(transport, ZmqTransport), 'Only implementations of ZmqTransport are supported'
+        assert isinstance(
+            transport, ZmqTransport
+        ), 'Only implementations of ZmqTransport are supported'
         self._stream.set_transport(transport)
 
     def connection_lost(self, exc: Optional[Exception]) -> None:
@@ -143,7 +148,10 @@ class ZmqStream:
     _waiter = None  # type: Optional[asyncio.Future[None]]
     _event_waiter = None  # type: Optional[asyncio.Future[None]]
 
-    def __init__(self, loop: asyncio.AbstractEventLoop, *, high: Optional[int] = None, low: Optional[int] = None, events_backlog: int = 100) -> None:
+    def __init__(self, loop: asyncio.AbstractEventLoop, *,
+                 high: Optional[int] = None,
+                 low: Optional[int] = None,
+                 events_backlog: int = 100) -> None:
         self._transport = None
         self._protocol = ZmqStreamProtocol(self, loop=loop)
         self._loop = loop
@@ -207,7 +215,8 @@ class ZmqStream:
         assert self._transport is None, 'Transport already set'
         self._transport = transport
 
-    def _set_read_buffer_limits(self, high: Optional[int] = None, low: Optional[int] = None) -> None:
+    def _set_read_buffer_limits(self, high: Optional[int] = None,
+                                low: Optional[int] = None) -> None:
         if high is None:
             if low is None:
                 high = 64*1024
@@ -221,7 +230,8 @@ class ZmqStream:
         self._high_water = high
         self._low_water = low
 
-    def set_read_buffer_limits(self, high: Optional[int] = None, low: Optional[int] = None) -> None:
+    def set_read_buffer_limits(self, high: Optional[int] = None,
+                               low: Optional[int] = None) -> None:
         self._set_read_buffer_limits(high, low)
         self._maybe_resume_transport()
 
@@ -294,7 +304,7 @@ class ZmqStream:
             if self._waiter is not None:
                 raise RuntimeError('read called while another coroutine is '
                                    'already waiting for incoming data')
-            self._waiter = asyncio.Future(loop=self._loop)  # type: asyncio.Future[Any]
+            self._waiter = asyncio.Future(loop=self._loop)
             try:
                 yield from self._waiter
             finally:

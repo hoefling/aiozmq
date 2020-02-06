@@ -14,8 +14,6 @@ from zmq import ZMQError
 __all__ = ['ZmqSelector']
 
 
-
-
 if sys.version_info >= (3, 8):
     from typing import Protocol
 else:
@@ -24,6 +22,7 @@ else:
 
 class _HasFileno(Protocol):
     def fileno(self) -> int: ...
+
 
 _FileObject = Union[int, _HasFileno]
 _FileDescriptor = int
@@ -106,7 +105,8 @@ class ZmqSelector(BaseSelector):
             # Raise ValueError after all.
             raise
 
-    def register(self, fileobj: _FileObject, events: _EventMask, data: Any = None) -> SelectorKey:
+    def register(self, fileobj: _FileObject, events: _EventMask,
+                 data: Any = None) -> SelectorKey:
         if (not events) or (events & ~(EVENT_READ | EVENT_WRITE)):
             raise ValueError("Invalid events: {!r}".format(events))
 
@@ -141,7 +141,8 @@ class ZmqSelector(BaseSelector):
             raise OSError(exc.errno, exc.strerror) from exc
         return key
 
-    def modify(self, fileobj: _FileObject, events: _EventMask, data: Any = None) -> SelectorKey:
+    def modify(self, fileobj: _FileObject, events: _EventMask,
+               data: Any = None) -> SelectorKey:
         try:
             fd = self._fileobj_lookup(fileobj)
             key = self._fd_to_key[fd]
@@ -185,7 +186,9 @@ class ZmqSelector(BaseSelector):
         except KeyError:
             return None
 
-    def select(self, timeout: Optional[float] = None) -> List[Tuple[SelectorKey, _EventMask]]:
+    def select(
+        self, timeout: Optional[float] = None
+    ) -> List[Tuple[SelectorKey, _EventMask]]:
         if timeout is None:
             timeout = None
         elif timeout <= 0:

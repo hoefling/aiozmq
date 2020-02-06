@@ -27,7 +27,9 @@ _T = TypeVar('_T')
 _F = Callable[..., _T]
 
 
-def _requires_unix_version(sysname: str, min_version: Tuple[int, ...]) -> Callable[[_F[_T]], _F[_T]]:  # pragma: no cover
+def _requires_unix_version(
+    sysname: str, min_version: Tuple[int, ...]
+) -> Callable[[_F[_T]], _F[_T]]:  # pragma: no cover
     """Decorator raising SkipTest if the OS is `sysname` and the
     version is less than `min_version`.
 
@@ -55,7 +57,9 @@ def _requires_unix_version(sysname: str, min_version: Tuple[int, ...]) -> Callab
     return decorator
 
 
-def requires_freebsd_version(*min_version: int) -> Callable[[_F[_T]], _F[_T]]:  # pragma: no cover
+def requires_freebsd_version(
+    *min_version: int
+) -> Callable[[_F[_T]], _F[_T]]:  # pragma: no cover
     """Decorator raising SkipTest if the OS is FreeBSD and the FreeBSD
     version is less than `min_version`.
 
@@ -65,7 +69,9 @@ def requires_freebsd_version(*min_version: int) -> Callable[[_F[_T]], _F[_T]]:  
     return _requires_unix_version('FreeBSD', min_version)
 
 
-def requires_linux_version(*min_version: int) -> Callable[[_F[_T]], _F[_T]]:  # pragma: no cover
+def requires_linux_version(
+    *min_version: int
+) -> Callable[[_F[_T]], _F[_T]]:  # pragma: no cover
     """Decorator raising SkipTest if the OS is Linux and the Linux version is
     less than `min_version`.
 
@@ -75,7 +81,9 @@ def requires_linux_version(*min_version: int) -> Callable[[_F[_T]], _F[_T]]:  # 
     return _requires_unix_version('Linux', min_version)
 
 
-def requires_mac_ver(*min_version: int) -> Callable[[_F[_T]], _F[_T]]:  # pragma: no cover
+def requires_mac_ver(
+    *min_version: int
+) -> Callable[[_F[_T]], _F[_T]]:  # pragma: no cover
     """Decorator raising SkipTest if the OS is Mac OS X and the OS X
     version if less than min_version.
 
@@ -128,8 +136,10 @@ def _is_ipv6_enabled() -> bool:  # pragma: no cover
 IPV6_ENABLED = _is_ipv6_enabled()
 
 
-def find_unused_port(family: _AddressFamily = socket.AF_INET,
-                     socktype: _SocketKind = socket.SOCK_STREAM) -> int:  # pragma: no cover
+def find_unused_port(
+    family: _AddressFamily = socket.AF_INET,
+    socktype: _SocketKind = socket.SOCK_STREAM
+) -> int:  # pragma: no cover
     """Returns an unused port that should be suitable for binding.  This is
     achieved by creating a temporary socket with the same family and type as
     the 'sock' parameter (default is AF_INET, SOCK_STREAM), and binding it to
@@ -192,7 +202,8 @@ def find_unused_port(family: _AddressFamily = socket.AF_INET,
     return port
 
 
-def bind_port(sock: socket.socket, host: str = HOST) -> int:  # pragma: no cover
+def bind_port(sock: socket.socket,
+              host: str = HOST) -> int:  # pragma: no cover
     """Bind the socket to a free port and return the port number.  Relies on
     ephemeral ports in order to ensure we are using an unbound port.  This is
     important as many tests may be running simultaneously, especially in a
@@ -248,7 +259,8 @@ class TestHandler(logging.Handler):
 
 
 @contextlib.contextmanager
-def log_hook(logname: str, queue: 'Queue[logging.LogRecord]') -> Iterator[None]:
+def log_hook(logname: str,
+             queue: 'Queue[logging.LogRecord]') -> Iterator[None]:
     logger = logging.getLogger(logname)
     handler = TestHandler(queue)
     logger.addHandler(handler)

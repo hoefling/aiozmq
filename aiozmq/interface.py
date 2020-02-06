@@ -19,7 +19,9 @@ _EventMask = int
 _ZmqOption = int
 _Endpoint = Union[str, Iterable[str]]
 
-SocketEvent = NamedTuple('SocketEvent', [('event', _EventMask), ('value', Any), ('endpoint', _Endpoint)])
+SocketEvent = NamedTuple('SocketEvent', [('event', _EventMask),
+                                         ('value', Any),
+                                         ('endpoint', _Endpoint)])
 
 
 class ZmqTransport(BaseTransport):
@@ -65,7 +67,8 @@ class ZmqTransport(BaseTransport):
         """
         raise NotImplementedError
 
-    def set_write_buffer_limits(self, high: Optional[int] = None, low: Optional[int] = None) -> None:
+    def set_write_buffer_limits(self, high: Optional[int] = None,
+                                low: Optional[int] = None) -> None:
         """Set the high- and low-water limits for write flow control.
 
         These two values control when to call the protocol's
@@ -205,7 +208,9 @@ class ZmqTransport(BaseTransport):
         raise NotImplementedError
 
     @asyncio.coroutine
-    def enable_monitor(self, events: Optional[_EventMask] = None) -> Generator[Any, Tuple['ZmqTransport', 'ZmqProtocol'], None]:
+    def enable_monitor(
+        self, events: Optional[_EventMask] = None
+    ) -> Generator[Any, Tuple['ZmqTransport', 'ZmqProtocol'], None]:
         """Enables socket events to be reported for this socket.
         Socket events are passed to the protocol's ZmqProtocol's
         event_received method.
