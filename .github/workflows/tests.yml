@@ -3,7 +3,7 @@ name: tests
 on: [push]
 
 jobs:
-  win_amd64+macosx:
+  tests:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
