@@ -388,10 +388,9 @@ class TransportTests(unittest.TestCase):
         self.assertFalse(self.tr.can_write_eof())
 
     def test_dns_address(self):
-        @asyncio.coroutine
-        def go():
-            with self.assertRaises(ValueError):
-                yield from self.tr.connect('tcp://example.com:8080')
+        async def go():
+            with self.assertRaises(OSError):
+                await self.tr.connect('tcp://example.com:8080')
 
     def test_write_none(self):
         self.tr.write(None)
