@@ -18,7 +18,8 @@ jobs:
       - name: Install dependencies
         run: |
           pip install pip setuptools wheel --upgrade
+          pip install pytest pytest-cov
           pip install --editable .
       - name: Run tests
         run: |
-          python runtests.py --coverage -v
+          pytest --cov=aiozmq --cov-report=term-missing
