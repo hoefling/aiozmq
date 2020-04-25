@@ -19,7 +19,7 @@ jobs:
         run: |
           pip install pip setuptools wheel --upgrade
           pip install pytest pytest-cov
-          pip install --editable .
+          pip install --editable .[rpc]
       - name: Run tests
         run: |
           pytest --cov=aiozmq --cov-report=term-missing
