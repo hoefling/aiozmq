@@ -188,8 +188,7 @@ class ZmqTransport(BaseTransport):
         """
         raise NotImplementedError
 
-    @asyncio.coroutine
-    def enable_monitor(self, events=None):
+    async def enable_monitor(self, events=None):
         """Enables socket events to be reported for this socket.
         Socket events are passed to the protocol's ZmqProtocol's
         event_received method.

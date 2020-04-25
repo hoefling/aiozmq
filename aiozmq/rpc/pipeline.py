@@ -11,16 +11,15 @@ from .base import (
     ServiceClosedError,
     _BaseProtocol,
     _BaseServerProtocol,
-    )
+)
 from .log import logger
 from .util import (
     _MethodCall,
-    )
+)
 
 
-@asyncio.coroutine
-def connect_pipeline(*, connect=None, bind=None, loop=None,
-                     translation_table=None):
+async def connect_pipeline(*, connect=None, bind=None, loop=None,
+                           translation_table=None):
     """A coroutine that creates and connects/binds Pipeline client instance.
 
     Usually for this function you need to use *connect* parameter, but
@@ -37,16 +36,15 @@ def connect_pipeline(*, connect=None, bind=None, loop=None,
     if loop is None:
         loop = asyncio.get_event_loop()
 
-    transp, proto = yield from create_zmq_connection(
+    transp, proto = await create_zmq_connection(
         lambda: _ClientProtocol(loop, translation_table=translation_table),
         zmq.PUSH, connect=connect, bind=bind, loop=loop)
     return PipelineClient(loop, proto)
 
 
-@asyncio.coroutine
-def serve_pipeline(handler, *, connect=None, bind=None, loop=None,
-                   translation_table=None, log_exceptions=False,
-                   exclude_log_exceptions=(), timeout=None):
+async def serve_pipeline(handler, *, connect=None, bind=None, loop=None,
+                         translation_table=None, log_exceptions=False,
+                         exclude_log_exceptions=(), timeout=None):
     """A coroutine that creates and connects/binds Pipeline server instance.
 
     Usually for this function you need to use *bind* parameter, but
@@ -74,7 +72,7 @@ def serve_pipeline(handler, *, connect=None, bind=None, loop=None,
     if loop is None:
         loop = asyncio.get_event_loop()
 
-    trans, proto = yield from create_zmq_connection(
+    trans, proto = await create_zmq_connection(
         lambda: _ServerProtocol(loop, handler,
                                 translation_table=translation_table,
                                 log_exceptions=log_exceptions,

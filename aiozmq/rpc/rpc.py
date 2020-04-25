@@ -19,23 +19,22 @@ from .base import (
     ServiceClosedError,
     _BaseProtocol,
     _BaseServerProtocol,
-    )
+)
 from .log import logger
 from .util import (
     _MethodCall,
     _fill_error_table,
-    )
+)
 
 
 __all__ = [
     'connect_rpc',
     'serve_rpc',
-    ]
+]
 
 
-@asyncio.coroutine
-def connect_rpc(*, connect=None, bind=None, loop=None,
-                error_table=None, translation_table=None, timeout=None):
+async def connect_rpc(*, connect=None, bind=None, loop=None,
+                      error_table=None, translation_table=None, timeout=None):
     """A coroutine that creates and connects/binds RPC client.
 
     Usually for this function you need to use *connect* parameter, but
@@ -60,17 +59,16 @@ def connect_rpc(*, connect=None, bind=None, loop=None,
     if loop is None:
         loop = asyncio.get_event_loop()
 
-    transp, proto = yield from create_zmq_connection(
+    transp, proto = await create_zmq_connection(
         lambda: _ClientProtocol(loop, error_table=error_table,
                                 translation_table=translation_table),
         zmq.DEALER, connect=connect, bind=bind, loop=loop)
     return RPCClient(loop, proto, timeout=timeout)
 
 
-@asyncio.coroutine
-def serve_rpc(handler, *, connect=None, bind=None, loop=None,
-              translation_table=None, log_exceptions=False,
-              exclude_log_exceptions=(), timeout=None):
+async def serve_rpc(handler, *, connect=None, bind=None, loop=None,
+                    translation_table=None, log_exceptions=False,
+                    exclude_log_exceptions=(), timeout=None):
     """A coroutine that creates and connects/binds RPC server instance.
 
     Usually for this function you need to use *bind* parameter, but
@@ -98,7 +96,7 @@ def serve_rpc(handler, *, connect=None, bind=None, loop=None,
     if loop is None:
         loop = asyncio.get_event_loop()
 
-    transp, proto = yield from create_zmq_connection(
+    transp, proto = await create_zmq_connection(
         lambda: _ServerProtocol(loop, handler,
                                 translation_table=translation_table,
                                 log_exceptions=log_exceptions,

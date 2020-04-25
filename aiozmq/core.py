@@ -28,9 +28,8 @@ __all__ = ['ZmqEventLoop', 'ZmqEventLoopPolicy', 'create_zmq_connection']
 SocketEvent = namedtuple('SocketEvent', 'event value endpoint')
 
 
-@asyncio.coroutine
-def create_zmq_connection(protocol_factory, zmq_type, *,
-                          bind=None, connect=None, zmq_sock=None, loop=None):
+async def create_zmq_connection(protocol_factory, zmq_type, *,
+                                bind=None, connect=None, zmq_sock=None, loop=None):
     """A coroutine which creates a ZeroMQ connection endpoint.
 
     The return value is a pair of (transport, protocol),
@@ -79,11 +78,11 @@ def create_zmq_connection(protocol_factory, zmq_type, *,
     if loop is None:
         loop = asyncio.get_event_loop()
     if isinstance(loop, ZmqEventLoop):
-        ret = yield from loop.create_zmq_connection(protocol_factory,
-                                                    zmq_type,
-                                                    bind=bind,
-                                                    connect=connect,
-                                                    zmq_sock=zmq_sock)
+        ret = await loop.create_zmq_connection(protocol_factory,
+                                               zmq_type,
+                                               bind=bind,
+                                               connect=connect,
+                                               zmq_sock=zmq_sock)
         return ret
 
     try:
@@ -98,7 +97,7 @@ def create_zmq_connection(protocol_factory, zmq_type, *,
     waiter = asyncio.Future(loop=loop)
     transport = _ZmqLooplessTransportImpl(loop, zmq_type,
                                           zmq_sock, protocol, waiter)
-    yield from waiter
+    await waiter
 
     try:
         if bind is not None:
@@ -108,7 +107,7 @@ def create_zmq_connection(protocol_factory, zmq_type, *,
                 if not isinstance(bind, Iterable):
                     raise ValueError('bind should be str or iterable')
             for endpoint in bind:
-                yield from transport.bind(endpoint)
+                await transport.bind(endpoint)
         if connect is not None:
             if isinstance(connect, str):
                 connect = [connect]
@@ -117,7 +116,7 @@ def create_zmq_connection(protocol_factory, zmq_type, *,
                     raise ValueError('connect should be '
                                      'str or iterable')
             for endpoint in connect:
-                yield from transport.connect(endpoint)
+                await transport.connect(endpoint)
         return transport, protocol
     except OSError:
         # don't care if zmq_sock.close can raise exception
@@ -147,9 +146,8 @@ class ZmqEventLoop(SelectorEventLoop):
                 zmq_sock.close()
         super().close()
 
-    @asyncio.coroutine
-    def create_zmq_connection(self, protocol_factory, zmq_type, *,
-                              bind=None, connect=None, zmq_sock=None):
+    async def create_zmq_connection(self, protocol_factory, zmq_type, *,
+                                    bind=None, connect=None, zmq_sock=None):
         """A coroutine which creates a ZeroMQ connection endpoint.
 
         See aiozmq.create_zmq_connection() coroutine for details.
@@ -167,7 +165,7 @@ class ZmqEventLoop(SelectorEventLoop):
         waiter = asyncio.Future(loop=self)
         transport = _ZmqTransportImpl(self, zmq_type,
                                       zmq_sock, protocol, waiter)
-        yield from waiter
+        await waiter
 
         try:
             if bind is not None:
@@ -177,7 +175,7 @@ class ZmqEventLoop(SelectorEventLoop):
                     if not isinstance(bind, Iterable):
                         raise ValueError('bind should be str or iterable')
                 for endpoint in bind:
-                    yield from transport.bind(endpoint)
+                    await transport.bind(endpoint)
             if connect is not None:
                 if isinstance(connect, str):
                     connect = [connect]
@@ -186,7 +184,7 @@ class ZmqEventLoop(SelectorEventLoop):
                         raise ValueError('connect should be '
                                          'str or iterable')
                 for endpoint in connect:
-                    yield from transport.connect(endpoint)
+                    await transport.connect(endpoint)
             self._zmq_sockets.add(zmq_sock)
             return transport, protocol
         except OSError:
@@ -322,7 +320,7 @@ class _BaseTransport(ZmqTransport):
             'exception': exc,
             'transport': self,
             'protocol': self._protocol,
-            })
+        })
         self._force_close(exc)
 
     def _call_connection_lost(self, exc):
@@ -368,9 +366,9 @@ class _BaseTransport(ZmqTransport):
     def _set_write_buffer_limits(self, high=None, low=None):
         if high is None:
             if low is None:
-                high = 64*1024
+                high = 64 * 1024
             else:
-                high = 4*low
+                high = 4 * low
         if low is None:
             low = high // 4
         if not high >= low >= 0:
@@ -528,8 +526,7 @@ class _BaseTransport(ZmqTransport):
             raise NotImplementedError("Not supported ZMQ socket type")
         return _EndpointsSet(self._subscriptions)
 
-    @asyncio.coroutine
-    def enable_monitor(self, events=None):
+    async def enable_monitor(self, events=None):
 
         # The standard approach of binding and then connecting does not
         # work in this specific case. The event loop does not properly
@@ -551,15 +548,14 @@ class _BaseTransport(ZmqTransport):
         if self._monitor is None:
             addr = "inproc://monitor.s-{}".format(self._zmq_sock.FD)
             events = events or zmq.EVENT_ALL
-            _, self._monitor = yield from create_zmq_connection(
+            _, self._monitor = await create_zmq_connection(
                 lambda: _ZmqEventProtocol(self._loop, self._protocol),
                 zmq.PAIR, connect=addr, loop=self._loop)
             # bind must come after connect
             self._zmq_sock.monitor(addr, events)
-            yield from self._monitor.wait_ready
+            await self._monitor.wait_ready
 
-    @asyncio.coroutine
-    def disable_monitor(self):
+    async def disable_monitor(self):
         self._disable_monitor()
 
     def _disable_monitor(self):
