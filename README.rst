@@ -6,6 +6,10 @@ asyncio (PEP 3156) support for ZeroMQ.
 .. image:: https://travis-ci.com/aio-libs/aiozmq.svg?branch=master
    :target: https://travis-ci.com/aio-libs/aiozmq
 
+.. image:: https://codecov.io/gh/aio-libs/aiomq/branch/master/graph/badge.svg
+   :target: https://codecov.io/gh/aio-libs/aiozmq
+   :alt: Coverage status
+
 The difference between ``aiozmq`` and vanilla ``pyzmq`` (``zmq.asyncio``).
 
 ``zmq.asyncio`` works only by replacement *event loop* with custom one.
